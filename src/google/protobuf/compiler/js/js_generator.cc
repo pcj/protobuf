@@ -32,6 +32,7 @@
 
 #include <assert.h>
 #include <algorithm>
+#include <iostream>
 #include <limits>
 #include <map>
 #include <memory>
@@ -3205,7 +3206,6 @@ bool GeneratorOptions::ParseFromOptions(
       }
       broken_proto3_semantics = true;
     } else if (options[i].first == "require_map") {
-      require_map = new map<string, string>;
       // Parse a string like
       // 'example/foo.proto=bar,example/baz.proto=quz' into a map.
       // The corresponding commonjs require() statements will then

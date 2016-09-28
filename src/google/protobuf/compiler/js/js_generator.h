@@ -81,8 +81,9 @@ struct GeneratorOptions {
         error_on_name_conflict(false),
         broken_proto3_semantics(false),
         extension(".js"),
-        require_map(),
-        one_output_file_per_input_file(false) {}
+        require_map(new map<string, string>),
+        one_output_file_per_input_file(false) {
+      }
 
   bool ParseFromOptions(
       const vector< pair< string, string > >& options,
