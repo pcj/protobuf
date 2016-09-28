@@ -3216,14 +3216,14 @@ bool GeneratorOptions::ParseFromOptions(
       // '../../example/foo_pb.js'.
       vector<string> mappings = Split(options[i].second, ",", true /* skip empty */);
       if (mappings.empty()) {
-        *error = "Malformed rename_map: must be comma-separated list of " +
+        *error = "Malformed rename_map: must be comma-separated list of "
                  "FILENAME=REPLACEMENT pairs.";
         return false;
       }
       for (string entry : mappings) {
         vector<string> pair = Split(entry, "=", true);
         if (pair.size() != 2) {
-          *error = "Malformed require_map: must be comma-separated list of " +
+          *error = "Malformed require_map: must be comma-separated list of "
                    "FILENAME@@REPLACEMENT entries, not '" + options[i].second +
                    "' " + std::to_string(pair.size());
           return false;
