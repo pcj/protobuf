@@ -33,6 +33,7 @@
 #ifndef GOOGLE_PROTOBUF_COMPILER_JS_GENERATOR_H__
 #define GOOGLE_PROTOBUF_COMPILER_JS_GENERATOR_H__
 
+#include <map>
 #include <string>
 #include <set>
 
@@ -80,6 +81,7 @@ struct GeneratorOptions {
         error_on_name_conflict(false),
         broken_proto3_semantics(false),
         extension(".js"),
+        require_map(),
         one_output_file_per_input_file(false) {}
 
   bool ParseFromOptions(
@@ -102,6 +104,9 @@ struct GeneratorOptions {
 
   // Indicates how to output the generated code based on the provided options.
   OutputMode output_mode() const;
+
+  // The following option is only relevant for commonjs
+  map<string, string>* require_map;
 
   // The remaining options are only relevant when we are using kImportClosure.
 

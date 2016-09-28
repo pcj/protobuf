@@ -191,6 +191,7 @@ string ModuleAlias(const string& filename) {
   // exposed to users so we can change it later if we need to.
   string basename = StripProto(filename);
   StripString(&basename, "-", '$');
+  StripString(&basename, ".", '$'); // fixes #1745.
   StripString(&basename, "/", '_');
   return basename + "_pb";
 }
@@ -3203,6 +3204,33 @@ bool GeneratorOptions::ParseFromOptions(
         return false;
       }
       broken_proto3_semantics = true;
+    } else if (options[i].first == "require_map") {
+      require_map = new map<string, string>;
+      // Parse a string like
+      // 'example/foo.proto=bar,example/baz.proto=quz' into a map.
+      // The corresponding commonjs require() statements will then
+      // become "require('bar')" instead of
+      // "require('example/foo_pb.js')".  This allows the caller to
+      // use a modulename rather than a filename, avoiding hardcoded
+      // filesystem path dependencies such as
+      // '../../example/foo_pb.js'.
+      vector<string> mappings = Split(options[i].second, ",", true /* skip empty */);
+      if (mappings.empty()) {
+        *error = "Malformed rename_map: must be comma-separated list of " +
+                 "FILENAME=REPLACEMENT pairs.";
+        return false;
+      }
+      for (string entry : mappings) {
+        vector<string> pair = Split(entry, "=", true);
+        if (pair.size() != 2) {
+          *error = "Malformed require_map: must be comma-separated list of " +
+                   "FILENAME@@REPLACEMENT entries, not '" + options[i].second +
+                   "' " + std::to_string(pair.size());
+          return false;
+        }
+        require_map->insert(std::make_pair(pair[0], pair[1]));
+      }
+      return true;
     } else {
       // Assume any other option is an output directory, as long as it is a bare
       // `key` rather than a `key=value` option.
@@ -3298,10 +3326,22 @@ void Generator::GenerateFile(const GeneratorOptions& options,
 
     for (int i = 0; i < file->dependency_count(); i++) {
       const string& name = file->dependency(i)->name();
+      string requirePath = GetRootPath(file->name(), name) + GetJSFilename(options, name);
+      if (options.require_map->find(file->name()) != options.require_map->end() ) {
+        string replacement = options.require_map->at(file->name());
+        string repl;
+        bool is_valid = EscapeJSString(replacement, &repl);
+        if (!is_valid) {
+          GOOGLE_LOG(WARNING) << "Skipping replacement value of require_map file " << file->name()
+                              << " as it contained invalid UTF-8.";
+        } else {
+          requirePath = repl;
+        }
+      }
       printer->Print(
-          "var $alias$ = require('$file$');\n",
+          "var $alias$ = require('$path$');\n",
           "alias", ModuleAlias(name),
-          "file", GetRootPath(file->name(), name) + GetJSFilename(options, name));
+          "path", requirePath);
     }
   }
 
