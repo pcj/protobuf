@@ -32,7 +32,6 @@
 
 #include <assert.h>
 #include <algorithm>
-#include <iostream>
 #include <limits>
 #include <map>
 #include <memory>
@@ -3205,31 +3204,29 @@ bool GeneratorOptions::ParseFromOptions(
         return false;
       }
       broken_proto3_semantics = true;
-    } else if (options[i].first == "require_map") {
-      // Parse a string like
-      // 'example/foo.proto=bar,example/baz.proto=quz' into a map.
-      // The corresponding commonjs require() statements will then
-      // become "require('bar')" instead of
-      // "require('example/foo_pb.js')".  This allows the caller to
-      // use a modulename rather than a filename, avoiding hardcoded
-      // filesystem path dependencies such as
-      // '../../example/foo_pb.js'.
-      vector<string> mappings = Split(options[i].second, ",", true /* skip empty */);
-      if (mappings.empty()) {
-        *error = "Malformed rename_map: must be comma-separated list of "
-                 "FILENAME=REPLACEMENT pairs.";
+    } else if (options[i].first.at(0) == 'M') {
+      // Parse an option like 'Mexample/foo.proto=bar'.  The
+      // corresponding commonjs require() statement will then become
+      // "require('bar')" instead of "require('example/foo_pb.js')".
+      // This allows the caller to use a modulename rather than a
+      // filename, avoiding hardcoded filesystem path dependencies
+      // such as '../../example/foo_pb.js'.
+      string key = options[i].first.substr(1);
+      string val = options[i].second;
+      if (key.empty()) {
+        *error = "Missing importmap filename value (lhs).";
         return false;
       }
-      for (string entry : mappings) {
-        vector<string> pair = Split(entry, "=", true);
-        if (pair.size() != 2) {
-          *error = "Malformed require_map: must be comma-separated list of "
-                   "FILENAME@@REPLACEMENT entries, not '" + options[i].second +
-                   "' " + std::to_string(pair.size());
-          return false;
-        }
-        require_map->insert(std::make_pair(pair[0], pair[1]));
+      if (key.size() == StripProto(key).size()) {
+        *error = "The importmap filename value (" + key +
+                 ") should name a file having a .proto file suffix";
+        return false;
       }
+      if (val.empty()) {
+        *error = "Missing importmap replacement operand value (rhs).";
+        return false;
+      }
+      import_map->insert(std::make_pair(key, val));
       return true;
     } else {
       // Assume any other option is an output directory, as long as it is a bare
@@ -3327,15 +3324,15 @@ void Generator::GenerateFile(const GeneratorOptions& options,
     for (int i = 0; i < file->dependency_count(); i++) {
       const string& name = file->dependency(i)->name();
       string requirePath = GetRootPath(file->name(), name) + GetJSFilename(options, name);
-      if (options.require_map->find(file->name()) != options.require_map->end() ) {
-        string replacement = options.require_map->at(file->name());
-        string repl;
-        bool is_valid = EscapeJSString(replacement, &repl);
+      if (options.import_map->find(file->name()) != options.import_map->end() ) {
+        string replacement;
+        bool is_valid = EscapeJSString(options.import_map->at(file->name()),
+                                       &replacement);
         if (!is_valid) {
-          GOOGLE_LOG(WARNING) << "Skipping replacement value of require_map file " << file->name()
+          GOOGLE_LOG(WARNING) << "Skipping replacement value of import_map file " << file->name()
                               << " as it contained invalid UTF-8.";
         } else {
-          requirePath = repl;
+          requirePath = replacement;
         }
       }
       printer->Print(

@@ -81,9 +81,8 @@ struct GeneratorOptions {
         error_on_name_conflict(false),
         broken_proto3_semantics(false),
         extension(".js"),
-        require_map(new map<string, string>),
-        one_output_file_per_input_file(false) {
-      }
+        import_map(new map<string, string>),
+        one_output_file_per_input_file(false) {}
 
   bool ParseFromOptions(
       const vector< pair< string, string > >& options,
@@ -106,8 +105,9 @@ struct GeneratorOptions {
   // Indicates how to output the generated code based on the provided options.
   OutputMode output_mode() const;
 
-  // The following option is only relevant for commonjs
-  map<string, string>* require_map;
+  // The following option is only relevant for commonjs and
+  // potentially applicable es6 when that is implemented.
+  map<string, string>* import_map;
 
   // The remaining options are only relevant when we are using kImportClosure.
 
